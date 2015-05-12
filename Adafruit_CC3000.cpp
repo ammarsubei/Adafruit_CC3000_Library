@@ -1329,7 +1329,7 @@ Adafruit_CC3000_Client Adafruit_CC3000::connectTCP(uint32_t destIP, uint16_t des
 }
 
 
-Adafruit_CC3000_Client Adafruit_CC3000::connectUDP(uint32_t destIP, uint16_t destPort)
+Adafruit_CC3000_Client Adafruit_CC3000::connectUDP(uint32_t destIP, uint16_t destPort, int32_t localIP )
 {
   sockaddr      socketAddress;
   int32_t       udp_socket;
@@ -1338,46 +1338,80 @@ Adafruit_CC3000_Client Adafruit_CC3000::connectUDP(uint32_t destIP, uint16_t des
   // socket   = SOCK_STREAM, SOCK_DGRAM, or SOCK_RAW 
   // protocol = IPPROTO_TCP, IPPROTO_UDP or IPPROTO_RAW
   //if (CC3KPrinter != 0) CC3KPrinter->print(F("Creating socket... "));
-  udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  if (-1 == udp_socket)
-  {
-    CHECK_PRINTER {
-      CC3KPrinter->println(F("Failed to open socket"));
-    }
-    return Adafruit_CC3000_Client();
-  }
-  //if (CC3KPrinter != 0) { CC3KPrinter->print(F("DONE (socket ")); CC3KPrinter->print(udp_socket); CC3KPrinter->println(F(")")); }
+  
+	if (-1 == (udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)))
+	{
+		CHECK_PRINTER {
+			CC3KPrinter->println(F("Failed to open socket"));
+		}
+		return Adafruit_CC3000_Client();
+	}
 
-  // Try to open the socket
-  memset(&socketAddress, 0x00, sizeof(socketAddress));
-  socketAddress.sa_family = AF_INET;
-  socketAddress.sa_data[0] = (destPort & 0xFF00) >> 8;  // Set the Port Number
-  socketAddress.sa_data[1] = (destPort & 0x00FF);
-  socketAddress.sa_data[2] = destIP >> 24;
-  socketAddress.sa_data[3] = destIP >> 16;
-  socketAddress.sa_data[4] = destIP >> 8;
-  socketAddress.sa_data[5] = destIP;
+	//if (CC3KPrinter != 0) { CC3KPrinter->print(F("DONE (socket ")); CC3KPrinter->print(udp_socket); CC3KPrinter->println(F(")")); }
 
-  CHECK_PRINTER {
-    CC3KPrinter->print(F("Connect to "));
-    printIPdotsRev(destIP);
-    CC3KPrinter->print(':');
-    CC3KPrinter->println(destPort);
-  }
+	if( localIP >=0 )
+	{
+		memset(&socketAddress, 0x00, sizeof(socketAddress));
+		socketAddress.sa_family = AF_INET;
+		socketAddress.sa_data[0] = (destPort & 0xFF00) >> 8;  // Set the Port Number
+		socketAddress.sa_data[1] = (destPort & 0x00FF);
+	
+		if( localIP != 0 )
+		{
+			socketAddress.sa_data[2] = localIP >> 24;
+			socketAddress.sa_data[3] = localIP >> 16;
+			socketAddress.sa_data[4] = localIP >> 8;
+			socketAddress.sa_data[5] = localIP;
+		}
 
-  //printHex((byte *)&socketAddress, sizeof(socketAddress));
-  if (-1 == ::connect(udp_socket, &socketAddress, sizeof(socketAddress)))
-  {
-    CHECK_PRINTER {
-      CC3KPrinter->println(F("Connection error"));
-    }
-    closesocket(udp_socket);
-    return Adafruit_CC3000_Client();
-  }
+		CHECK_PRINTER {
+			CC3KPrinter->print(F("Bind to "));
+			printIPdotsRev(localIP);
+			CC3KPrinter->print(':');
+			CC3KPrinter->println(destPort);
+		}
+
+		//printHex((byte *)&socketAddress, sizeof(socketAddress));
+		if (-1 == ::bind(udp_socket, (sockaddr*)&socketAddress, sizeof(sockaddr)))
+		{
+			CHECK_PRINTER {
+				CC3KPrinter->println(F("Bind error"));
+			}
+			closesocket(udp_socket);
+			return Adafruit_CC3000_Client();
+		}
+	}
+
+	// Try to open the socket
+	memset(&socketAddress, 0x00, sizeof(socketAddress));
+	socketAddress.sa_family = AF_INET;
+	socketAddress.sa_data[0] = (destPort & 0xFF00) >> 8;  // Set the Port Number
+	socketAddress.sa_data[1] = (destPort & 0x00FF);
+	socketAddress.sa_data[2] = destIP >> 24;
+	socketAddress.sa_data[3] = destIP >> 16;
+	socketAddress.sa_data[4] = destIP >> 8;
+	socketAddress.sa_data[5] = destIP;
+
+	CHECK_PRINTER {
+		CC3KPrinter->print(F("Connect to "));
+		printIPdotsRev(destIP);
+		CC3KPrinter->print(':');
+		CC3KPrinter->println(destPort);
+	}
+
+	//printHex((byte *)&socketAddress, sizeof(socketAddress));
+	if (-1 == ::connect(udp_socket, &socketAddress, sizeof(socketAddress)))
+	{
+		CHECK_PRINTER {
+			CC3KPrinter->println(F("Connection error"));
+		}
+		
+		closesocket(udp_socket);	
+		return Adafruit_CC3000_Client();
+	}
 
   return Adafruit_CC3000_Client(udp_socket);
 }
-
 
 /**********************************************************************/
 Adafruit_CC3000_Client::Adafruit_CC3000_Client(void) {

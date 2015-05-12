@@ -161,7 +161,7 @@ class Adafruit_CC3000 {
     bool     checkSmartConfigFinished(void);
 
     Adafruit_CC3000_Client connectTCP(uint32_t destIP, uint16_t destPort);
-    Adafruit_CC3000_Client connectUDP(uint32_t destIP, uint16_t destPort);
+    Adafruit_CC3000_Client connectUDP(uint32_t destIP, uint16_t destPort, int32_t localIP=-1);
      
     #ifndef CC3000_TINY_DRIVER
     bool     getFirmwareVersion(uint8_t *major, uint8_t *minor);
